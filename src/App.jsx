@@ -1,32 +1,14 @@
-import * as React from "react";
-import { BrowserRouter } from "react-router-dom";
-import AppRouter from "./components/AppRouter";
-import { Provider } from "./provider/theme-provider";
-import Loader from "./components/loader/Loader";
-import Nav from "./components/Navbar";
-import Layout from "./components/ui/layout/Layout";
 
-
-
-
-
+import { Input } from "@nextui-org/react"
+import React from "react"
 function App() {
+
+
   return (
     <>
-      <Provider>
-        <BrowserRouter>
-          <React.Suspense fallback={<Loader />}>
-            <Layout>
-              <AppRouter />
-            </Layout>
-          </React.Suspense>
-        </BrowserRouter>
-      </Provider>
-
-
-
+      <div className="text-2xl bg-black w-16">Hello</div>
     </>
-  );
+  )
 }
 
 export default App

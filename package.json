@@ -1,5 +1,5 @@
 {
-  "name": "chatapp",
+  "name": "tandirdate",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,31 +11,27 @@
   },
   "dependencies": {
     "@nextui-org/react": "^2.6.11",
-    "@nextui-org/theme": "^2.4.5",
-    "@nextui-org/use-theme": "^2.1.1",
-    "autoprefixer": "^10.4.20",
     "firebase": "^11.1.0",
-    "framer-motion": "^11.17.0",
-    "next-themes": "^0.4.4",
-    "postcss": "^8.4.49",
+    "framer-motion": "^11.18.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-firebase-hooks": "^5.1.1",
-    "react-icons": "^5.4.0",
+    "react-firebase-hooks": "1.2.1",
     "react-router-dom": "^7.1.1",
-    "sass": "^1.83.4",
-    "tailwindcss": "^3.4.17"
+    "sass": "^1.83.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react-swc": "^3.5.0",
+    "autoprefixer": "^10.4.20",
     "eslint": "^9.17.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
     "vite": "^6.0.5"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
