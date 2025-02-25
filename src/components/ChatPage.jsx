@@ -157,42 +157,44 @@ const ChatPage = () => {
 
         {status === 'connected' && (
           <>
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-[#2c2d31] scrollbar-track-[#1a1b1e]">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'} items-end space-x-2 ${
-                    index > 0 && messages[index - 1].sender === message.sender ? 'mt-1' : 'mt-4'
-                  }`}
-                >
-                  {message.sender !== 'me' && isLastMessageFromSender(index) && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4a9eff] to-[#2d7cd1] flex items-center justify-center text-white text-sm flex-shrink-0 shadow-lg">
-                      {partner?.gender || '?'}
-                    </div>
-                  )}
+            <div className="chat-container flex-1 relative">
+              <div className="chat-messages absolute inset-0 overflow-y-auto px-4 py-4 space-y-4">
+                {messages.map((message, index) => (
                   <div
-                    className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                      message.sender === 'me'
-                        ? 'bg-gradient-to-r from-[#4a9eff]/10 to-[#4a9eff]/20 text-white rounded-br-sm'
-                        : 'bg-[#2c2d31] text-white rounded-bl-sm'
+                    key={index}
+                    className={`flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'} items-end space-x-2 ${
+                      index > 0 && messages[index - 1].sender === message.sender ? 'mt-1' : 'mt-4'
                     }`}
                   >
-                    <p className="text-[15px] leading-relaxed break-words">{message.text}</p>
-                    <p className={`text-xs mt-1 ${message.sender === 'me' ? 'text-[#4a9eff]/60' : 'text-gray-400'}`}>
-                      {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  {message.sender === 'me' && isLastMessageFromSender(index) && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff4a9e] to-[#d12d7c] flex items-center justify-center text-white text-sm shadow-lg">
-                      {location.state?.preferences?.myGender || '?'}
+                    {message.sender !== 'me' && isLastMessageFromSender(index) && (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4a9eff] to-[#2d7cd1] flex items-center justify-center text-white text-sm flex-shrink-0 shadow-lg">
+                        {partner?.gender || '?'}
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                        message.sender === 'me'
+                          ? 'bg-gradient-to-r from-[#4a9eff]/10 to-[#4a9eff]/20 text-white rounded-br-sm backdrop-blur-sm'
+                          : 'bg-[#2c2d31] text-white rounded-bl-sm'
+                      }`}
+                    >
+                      <p className="text-[15px] leading-relaxed break-words">{message.text}</p>
+                      <p className={`text-xs mt-1 ${message.sender === 'me' ? 'text-[#4a9eff]/60' : 'text-gray-400'}`}>
+                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
-                  )}
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
+                    {message.sender === 'me' && isLastMessageFromSender(index) && (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff4a9e] to-[#d12d7c] flex items-center justify-center text-white text-sm shadow-lg">
+                        {location.state?.preferences?.myGender || '?'}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} className="h-4" />
+              </div>
             </div>
 
-            <form onSubmit={sendMessage} className="mt-4 flex items-center gap-2 bg-[#2c2d31] p-3 rounded-2xl">
+            <form onSubmit={sendMessage} className="mt-4 flex items-center gap-2 bg-[#2c2d31] p-3 rounded-2xl backdrop-blur-sm">
               <input
                 ref={inputRef}
                 type="text"
