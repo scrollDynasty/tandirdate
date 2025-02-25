@@ -32,50 +32,50 @@ TandirDate - это современное веб-приложение для а
 ### Установка
 
 1. Клонируйте репозиторий:
-\`\`\`bash
+```bash
 git clone https://github.com/scrollDynasty/tandirdate.git
 cd tandirdate
-\`\`\`
+```
 
 2. Установите зависимости:
-\`\`\`bash
+```bash
 npm install
-\`\`\`
+```
 
 3. Создайте файл .env в корневой директории:
-\`\`\`env
+```env
 MONGODB_URI=mongodb://127.0.0.1:27017/chat_app
 PORT=9999
-\`\`\`
+```
 
 ### Запуск для разработки
 
 1. Запустите MongoDB:
-\`\`\`bash
+```bash
 mongod
-\`\`\`
+```
 
 2. Запустите сервер:
-\`\`\`bash
+```bash
 node server/index.js
-\`\`\`
+```
 
 3. В отдельном терминале запустите клиент:
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 
 ### Сборка для продакшена
 
 1. Соберите клиентскую часть:
-\`\`\`bash
+```bash
 npm run build
-\`\`\`
+```
 
 2. Запустите сервер:
-\`\`\`bash
+```bash
 node server/index.js
-\`\`\`
+```
 
 ## 🛠 Технологии
 
@@ -95,7 +95,7 @@ node server/index.js
 
 ## 📦 Структура проекта
 
-\`\`\`
+```
 tandirdate/
 ├── src/                    # Клиентский код
 │   ├── components/         # React компоненты
@@ -107,7 +107,7 @@ tandirdate/
 ├── dist/                 # Собранное приложение
 ├── package.json         # Зависимости и скрипты
 └── README.md            # Документация
-\`\`\`
+```
 
 ## 🤝 Вклад в проект
 
