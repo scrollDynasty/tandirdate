@@ -3,6 +3,8 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const path = require('path');
+require('dotenv').config();
+
 
 const app = express();
 
@@ -101,43 +103,6 @@ const searchQueues = {
 // Активные соединения
 const activeConnections = new Map();
 
-// Функция для подсчета пользователей
-const getUsersStats = () => {
-  const totalUsers = activeConnections.size;
-  const searchingUsers = Object.values(searchQueues).reduce((acc, queue) => 
-    acc + queue.filter(item => {
-      // Проверяем, что сокет все еще подключен
-      const connection = activeConnections.get(item.socket.id);
-      return connection && connection.socket.connected;
-    }).length
-  , 0);
-  return { totalUsers, searchingUsers };
-};
-
-// Функция для обновления статистики у всех клиентов
-const broadcastStats = () => {
-  const stats = getUsersStats();
-  io.emit('users_stats', stats);
-};
-
-// Функция для очистки очередей от отключенных пользователей
-const cleanupQueues = () => {
-  Object.values(searchQueues).forEach(queue => {
-    const initialLength = queue.length;
-    // Оставляем только подключенных пользователей
-    const newQueue = queue.filter(item => {
-      const connection = activeConnections.get(item.socket.id);
-      return connection && connection.socket.connected;
-    });
-    queue.length = 0; // Очищаем очередь
-    queue.push(...newQueue); // Добавляем только активных пользователей
-  });
-  broadcastStats();
-};
-
-// Запускаем периодическую очистку очередей
-setInterval(cleanupQueues, 10000);
-
 function isAgeMatch(user1Prefs, user2Prefs) {
   return (
     user1Prefs.targetAgeRange.min <= user2Prefs.targetAgeRange.max &&
@@ -156,27 +121,15 @@ function isGenderMatch(user1Prefs, user2Prefs) {
 function findMatch(socket, preferences) {
   const userGender = preferences.myGender;
   
-  // Сначала очищаем очереди от отключенных пользователей
-  cleanupQueues();
-  
   // Проверяем все очереди
   for (const [queueGender, queue] of Object.entries(searchQueues)) {
     for (let i = 0; i < queue.length; i++) {
       const potentialPartner = queue[i];
       
-      // Проверяем, что потенциальный партнер все еще подключен
-      const partnerConnection = activeConnections.get(potentialPartner.socket.id);
-      if (!partnerConnection || !partnerConnection.socket.connected) {
-        queue.splice(i, 1);
-        i--;
-        continue;
-      }
-      
       if (isGenderMatch(preferences, potentialPartner.preferences) &&
           isAgeMatch(preferences, potentialPartner.preferences)) {
         // Удаляем партнера из очереди
         queue.splice(i, 1);
-        broadcastStats();
         return potentialPartner;
       }
     }
@@ -184,7 +137,6 @@ function findMatch(socket, preferences) {
 
   // Если партнер не найден, добавляем в соответствующую очередь
   searchQueues[userGender].push({ socket, preferences });
-  broadcastStats();
   return null;
 }
 
@@ -198,18 +150,7 @@ io.on('connection', (socket) => {
     chat: null
   });
 
-  // Отправляем начальную статистику
-  broadcastStats();
-
   socket.on('start_search', async (preferences) => {
-    // Удаляем пользователя из всех очередей перед новым поиском
-    Object.values(searchQueues).forEach(queue => {
-      const index = queue.findIndex(item => item.socket.id === socket.id);
-      if (index !== -1) {
-        queue.splice(index, 1);
-      }
-    });
-
     const partner = findMatch(socket, preferences);
     
     if (partner) {
@@ -241,14 +182,13 @@ io.on('connection', (socket) => {
         id: socket.id,
         gender: preferences.myGender
       });
-
-      broadcastStats();
     }
   });
 
   socket.on('chat_message', async (message) => {
     const connection = activeConnections.get(socket.id);
     if (connection && connection.partner && connection.chat) {
+      // Сохраняем сообщение в базе данных с обработкой ошибок
       await handleSaveError(async () => {
         const newMessage = new Message({
           text: message.text,
@@ -258,15 +198,18 @@ io.on('connection', (socket) => {
         });
         await newMessage.save();
         
+        // Добавляем сообщение к чату
         connection.chat.messages.push(newMessage._id);
         await connection.chat.save();
 
+        // Отправляем сообщение партнеру
         connection.partner.emit('chat_message', {
           text: message.text,
           sender: 'partner',
           timestamp: new Date().toISOString()
         });
       }, async () => {
+        // Fallback: отправляем сообщение даже если сохранение не удалось
         connection.partner.emit('chat_message', {
           text: message.text,
           sender: 'partner',
@@ -297,7 +240,6 @@ io.on('connection', (socket) => {
       
       connection.partner = null;
       connection.chat = null;
-      broadcastStats(); // Обновляем статистику
     }
   });
 
@@ -329,8 +271,6 @@ io.on('connection', (socket) => {
         queue.splice(index, 1);
       }
     });
-
-    broadcastStats(); // Обновляем статистику при отключении
   });
 });
 

@@ -1,17 +1,18 @@
+import { MoreVertical } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
+import Menu from './ComplaintMenu';
 
-const SOCKET_SERVER = window.location.origin;
+const SOCKET_SERVER = 'localhost:9999';
 
 const socketOptions = {
   transports: ['websocket', 'polling'],
   reconnection: true,
   reconnectionAttempts: 5,
-  reconnectionDelay: 2000,
+  reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   timeout: 20000,
-  forceNew: true
 };
 
 const ChatPage = () => {
@@ -20,95 +21,52 @@ const ChatPage = () => {
   const [socket, setSocket] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [status, setStatus] = useState('connecting');
+  const [status, setStatus] = useState('searching');
   const [partner, setPartner] = useState(null);
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
   const [showConfirmEndChat, setShowConfirmEndChat] = useState(false);
-  const [usersStats, setUsersStats] = useState({ totalUsers: 0, searchingUsers: 0 });
-  const [connectionError, setConnectionError] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const reconnectAttempts = useRef(0);
+
+  const [selectedMessage, setSelectedMessage] = useState(null);
+
 
   useEffect(() => {
-    let reconnectTimer;
+    const newSocket = io(SOCKET_SERVER, socketOptions);
+    setSocket(newSocket);
 
-    const connectSocket = () => {
-      if (reconnectAttempts.current >= 5) {
-        setConnectionError(true);
-        setStatus('error');
-        return;
+    newSocket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Connected to server');
+      if (location.state?.preferences) {
+        newSocket.emit('start_search', location.state.preferences);
+      } else {
+        navigate('/');
       }
+    });
 
-      const newSocket = io(SOCKET_SERVER, socketOptions);
-
-      newSocket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-        reconnectAttempts.current += 1;
-        
-        if (reconnectAttempts.current < 5) {
-          reconnectTimer = setTimeout(connectSocket, 2000);
-        } else {
-          setConnectionError(true);
-          setStatus('error');
-        }
-      });
-
-      newSocket.on('connect', () => {
-        console.log('Connected to server');
-        setConnectionError(false);
-        setSocket(newSocket);
-        setStatus('searching');
-        
-        if (location.state?.preferences) {
-          newSocket.emit('start_search', location.state.preferences);
-        } else {
-          navigate('/');
-        }
-      });
-
-      newSocket.on('users_stats', (stats) => {
-        setUsersStats(stats);
-      });
-
-      newSocket.on('partner_found', (partnerInfo) => {
-        setPartner(partnerInfo);
-        setStatus('connected');
-        if (inputRef.current) {
-          inputRef.current.focus();
-        }
-      });
-
-      newSocket.on('chat_message', (message) => {
-        setMessages((prev) => [...prev, message]);
-      });
-
-      newSocket.on('partner_disconnected', () => {
-        setStatus('disconnected');
-        setPartner(null);
-        setShowNewChatDialog(true);
-      });
-
-      newSocket.on('disconnect', () => {
-        console.log('Disconnected from server');
-        if (!connectionError) {
-          setStatus('connecting');
-        }
-      });
-
-      return () => {
-        clearTimeout(reconnectTimer);
-        newSocket.close();
-      };
-    };
-
-    connectSocket();
-
-    return () => {
-      if (socket) {
-        socket.close();
+    newSocket.on('partner_found', (partnerInfo) => {
+      setPartner(partnerInfo);
+      setStatus('connected');
+      if (inputRef.current) {
+        inputRef.current.focus();
       }
-    };
+    });
+
+    newSocket.on('chat_message', (message) => {
+      setMessages((prev) => [...prev, message]);
+    });
+
+    newSocket.on('partner_disconnected', () => {
+      setStatus('disconnected');
+      setPartner(null);
+      setShowNewChatDialog(true);
+    });
+
+    return () => newSocket.close();
   }, []);
 
   useEffect(() => {
@@ -117,8 +75,9 @@ const ChatPage = () => {
 
   const sendMessage = (e) => {
     e.preventDefault();
-    if (inputMessage.trim() && socket && socket.connected) {
+    if (inputMessage.trim() && socket) {
       const message = {
+        
         text: inputMessage,
         sender: 'me',
         timestamp: new Date().toISOString()
@@ -134,7 +93,7 @@ const ChatPage = () => {
   };
 
   const confirmStopChat = () => {
-    if (socket && socket.connected) {
+    if (socket) {
       socket.emit('stop_chat');
       setShowConfirmEndChat(false);
       setShowNewChatDialog(true);
@@ -149,32 +108,10 @@ const ChatPage = () => {
   };
 
   const startNewChat = () => {
-    if (connectionError) {
-      // Попробуем переподключиться
-      reconnectAttempts.current = 0;
-      setConnectionError(false);
-      setStatus('connecting');
-      if (socket) {
-        socket.connect();
-      }
-      return;
-    }
-
-    if (socket && socket.connected) {
-      setShowNewChatDialog(false);
-      setStatus('searching');
-      setMessages([]);
-      socket.emit('start_search', location.state?.preferences);
-    }
-  };
-
-  const retryConnection = () => {
-    reconnectAttempts.current = 0;
-    setConnectionError(false);
-    setStatus('connecting');
-    if (socket) {
-      socket.connect();
-    }
+    setShowNewChatDialog(false);
+    setStatus('searching');
+    setMessages([]);
+    socket.emit('start_search', location.state?.preferences);
   };
 
   // Функция для определения, является ли сообщение последним от отправителя
@@ -183,6 +120,16 @@ const ChatPage = () => {
     return messages[index].sender !== messages[index + 1]?.sender;
   };
 
+
+
+
+  const handleClick = (message) => {
+    setSelectedMessage(message.text);
+    console.log("Выбранное сообщение:", message.text);
+  };
+// получение выбранного сообщения
+
+  console.log(messages);
   return (
     <div className="h-screen flex flex-col bg-[#1a1b1e]">
       {/* Header */}
@@ -209,41 +156,11 @@ const ChatPage = () => {
 
       {/* Chat Area */}
       <div className="flex-1 container mx-auto p-4 overflow-hidden flex flex-col">
-        {status === 'connecting' && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 border-4 border-[#4a9eff] border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p className="text-lg text-gray-400">Подключение к серверу...</p>
-            </div>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <p className="text-lg text-red-400">Ошибка подключения к серверу</p>
-              <button
-                onClick={retryConnection}
-                className="px-6 py-2 bg-gradient-to-r from-[#4a9eff] to-[#2d7cd1] text-white rounded-lg hover:opacity-90 transition-colors"
-              >
-                Попробовать снова
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="px-6 py-2 bg-[#2c2d31] text-gray-300 rounded-lg hover:bg-[#35363c] transition-colors ml-2"
-              >
-                Вернуться на главную
-              </button>
-            </div>
-          </div>
-        )}
-
         {status === 'searching' && (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center space-y-4">
               <div className="w-16 h-16 border-4 border-[#4a9eff] border-t-transparent rounded-full animate-spin mx-auto"></div>
               <p className="text-lg text-gray-400">Поиск собеседника...</p>
-              <p className="text-sm text-gray-500">В поиске: {usersStats.searchingUsers} пользователей</p>
               <button
                 onClick={cancelSearch}
                 className="px-6 py-2 bg-[#2c2d31] text-gray-300 rounded-lg hover:bg-[#35363c] transition-colors"
@@ -261,26 +178,31 @@ const ChatPage = () => {
                 {messages.map((message, index) => (
                   <div
                     key={index}
-                    className={`flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'} items-end space-x-2 ${
-                      index > 0 && messages[index - 1].sender === message.sender ? 'mt-1' : 'mt-4'
-                    }`}
+                    className={`flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'} items-end space-x-2 ${index > 0 && messages[index - 1].sender === message.sender ? 'mt-1' : 'mt-4'
+                      }`}
                   >
                     {message.sender !== 'me' && isLastMessageFromSender(index) && (
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4a9eff] to-[#2d7cd1] flex items-center justify-center text-white text-sm flex-shrink-0 shadow-lg">
                         {partner?.gender || '?'}
                       </div>
                     )}
+
                     <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                        message.sender === 'me'
-                          ? 'bg-gradient-to-r from-[#4a9eff]/10 to-[#4a9eff]/20 text-white rounded-br-sm backdrop-blur-sm'
-                          : 'bg-[#2c2d31] text-white rounded-bl-sm'
-                      }`}
+                      className={`max-w-[70%] rounded-2xl flex items-center px-4 py-2 ${message.sender === 'me'
+                        ? 'bg-gradient-to-r from-[#4a9eff]/10 to-[#4a9eff]/20 text-white rounded-br-sm backdrop-blur-sm'
+                        : 'bg-[#2c2d31] text-white rounded-bl-sm'
+                        }`}
                     >
-                      <p className="text-[15px] leading-relaxed break-words">{message.text}</p>
-                      <p className={`text-xs mt-1 ${message.sender === 'me' ? 'text-[#4a9eff]/60' : 'text-gray-400'}`}>
-                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                      {
+                        message.sender !== 'me' && (<div onClick={()=> handleClick(message)}><Menu message={selectedMessage} /></div>)
+                      }
+
+                      <div>
+                        <p className="text-[15px] leading-relaxed break-words">{message.text}</p>
+                        <p className={`text-xs mt-1 ${message.sender === 'me' ? 'text-[#4a9eff]/60' : 'text-gray-400'}`}>
+                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
                     </div>
                     {message.sender === 'me' && isLastMessageFromSender(index) && (
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff4a9e] to-[#d12d7c] flex items-center justify-center text-white text-sm shadow-lg">
@@ -304,12 +226,11 @@ const ChatPage = () => {
               />
               <button
                 type="submit"
-                disabled={!inputMessage.trim() || !socket?.connected}
-                className={`p-3 rounded-xl transition-all duration-200 ${
-                  inputMessage.trim() && socket?.connected
-                    ? 'bg-gradient-to-r from-[#4a9eff] to-[#2d7cd1] text-white hover:opacity-90'
-                    : 'bg-[#35363c] text-gray-400 cursor-not-allowed'
-                }`}
+                disabled={!inputMessage.trim()}
+                className={`p-3 rounded-xl transition-all duration-200 ${inputMessage.trim()
+                  ? 'bg-gradient-to-r from-[#4a9eff] to-[#2d7cd1] text-white hover:opacity-90'
+                  : 'bg-[#35363c] text-gray-400 cursor-not-allowed'
+                  }`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -325,24 +246,21 @@ const ChatPage = () => {
               <h3 className="text-xl font-semibold text-white mb-4">
                 {status === 'disconnected' ? 'Собеседник покинул чат' : 'Чат завершен'}
               </h3>
-              <p className="text-gray-300 mb-2">
-                {connectionError ? 'Произошла ошибка подключения к серверу' : 'Хотите начать поиск нового собеседника?'}
-              </p>
-              <p className="text-sm text-gray-400 mb-6">
-                {!connectionError && `В поиске: ${usersStats.searchingUsers} пользователей`}
+              <p className="text-gray-300 mb-6">
+                Хотите начать поиск нового собеседника?
               </p>
               <div className="flex gap-4">
                 <button
                   onClick={startNewChat}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-[#4a9eff] to-[#2d7cd1] text-white rounded-xl shadow-lg hover:opacity-90 transition-all duration-200"
                 >
-                  {connectionError ? 'Переподключиться' : 'Начать поиск'}
+                  Начать поиск
                 </button>
                 <button
                   onClick={() => navigate('/')}
                   className="flex-1 px-6 py-3 bg-[#35363c] text-white rounded-xl shadow-lg hover:bg-[#3d3e44] transition-all duration-200"
                 >
-                  {connectionError ? 'Вернуться на главную' : 'Изменить параметры поиска'}
+                  Изменить параметры поиска
                 </button>
               </div>
             </div>
